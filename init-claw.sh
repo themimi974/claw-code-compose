@@ -72,6 +72,6 @@ exec $RUNTIME run \
    -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
    -e CLAW_MODEL="${CLAW_MODEL:-}" \
    -v "${PROJECT_DIR}:/workspace:Z" \
-   -v "${SCRIPT_DIR}/claw-config.json:/root/.config/claw-code/config.json:Z" \
+   -v "${PROJECT_DIR}/.claw:/root/.claw:Z" \
    -w /workspace \
    claw-code:latest claw --permission-mode danger-full-access $MODEL_FLAG "$@"

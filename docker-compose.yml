@@ -12,6 +12,7 @@ services:
       - ../.env
     volumes:
       - ${PROJECT_DIR}:/workspace:Z
+      - ${PROJECT_DIR}/.claw:/root/.claw:Z
     environment:
       - container=
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-dummy}
