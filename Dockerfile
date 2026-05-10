@@ -1,4 +1,4 @@
-FROM rust:latest-bookworm
+FROM rust:latest-trixie
 
 # Install dependencies
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
