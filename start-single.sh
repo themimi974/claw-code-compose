@@ -41,4 +41,4 @@ if [ -n "$CLAW_MODEL" ]; then
    MODEL_FLAG="--model $CLAW_MODEL"
 fi
 
-exec $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" run --rm claw-code claw --dangerously-skip-permissions $MODEL_FLAG "$@"
+exec $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" run --rm claw-code claw --permission-mode danger-full-access $MODEL_FLAG "$@"
