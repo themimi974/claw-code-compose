@@ -7,12 +7,12 @@ err()  { echo -e "\033[31m✘\033[0m $*"; exit 1; }
 # --- Detect container runtime ---
 COMPOSE_PROVIDER=""
 if command -v podman &>/dev/null; then
-    # Check if native podman compose is available (not podman-compose)
-    if podman compose version &>/dev/null 2>&1; then
-        ENGINE=podman
+    ENGINE=podman
+    # Check for native podman compose (not the podman-compose wrapper)
+    # If "podman compose version" shows "podman-compose" in output, it's the wrapper
+    if podman compose version 2>&1 | grep -qv "podman-compose"; then
         COMPOSE_PROVIDER="native"
     elif command -v podman-compose &>/dev/null; then
-        ENGINE=podman
         COMPOSE_PROVIDER="podman-compose"
     fi
 fi
@@ -24,6 +24,11 @@ fi
 
 if [[ -z "$ENGINE" ]]; then
     err "No container runtime found (need docker or podman)"
+fi
+
+# If still can't determine, default to podman-compose
+if [[ -z "$COMPOSE_PROVIDER" ]] && command -v podman-compose &>/dev/null; then
+    COMPOSE_PROVIDER="podman-compose"
 fi
 
 # --- Find compose file ---
