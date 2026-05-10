@@ -1,5 +1,4 @@
 # Environment files (actual secrets - do not commit)
-.env
 .env.local
 
 # Claw Code project (local bootstrap)
