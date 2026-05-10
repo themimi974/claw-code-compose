@@ -15,8 +15,11 @@ services:
       - ./claw.json:/workspace/claw.json:ro,z
       - ./.claw-code:/workspace/.claw-code/:rw,z
       - ./AGENTS.md:/workspace/AGENTS.md:rw,z
+      - ./.env:/workspace/.env:ro,z
     environment:
-      # Disable sandbox for --rm container usage
       - ANTHROPIC_SANDBOX=false
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAW_MODEL=${CLAW_MODEL}
     network_mode: bridge
     restart: "no"
