@@ -20,4 +20,5 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - CLAW_MODEL=${CLAW_MODEL:-openai/qwen3:14b}
+      - ANTHROPIC_SANDBOX=false
     network_mode: host
