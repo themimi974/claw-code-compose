@@ -3,7 +3,11 @@ set -euo pipefail
 
 # Resolve script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(pwd)"
+
+# PROJECT_DIR is set by init-claw, or use parent of SCRIPT_DIR (the project directory)
+if [[ -z "${PROJECT_DIR:-}" ]]; then
+    PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+fi
 
 export PROJECT_DIR
 
@@ -37,7 +41,7 @@ $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" build
 
 # Run via compose (--rm to remove container after exit)
 MODEL_FLAG=""
-if [ -n "$CLAW_MODEL" ]; then
+if [[ -n "${CLAW_MODEL:-}" ]]; then
    MODEL_FLAG="--model $CLAW_MODEL"
 fi
 
