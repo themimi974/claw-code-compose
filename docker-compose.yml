@@ -7,6 +7,8 @@ services:
 
     working_dir: /workspace
 
+    env_file:
+      - .env
     volumes:
       # Only the current directory is exposed to the container
       - ../:/workspace:z
