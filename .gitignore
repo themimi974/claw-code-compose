@@ -1,0 +1,10 @@
+# Environment files
+.env
+
+# Session data (local persistence)
+.claw-code/
+
+# Temporary files
+temp/
+old/
+*.log
