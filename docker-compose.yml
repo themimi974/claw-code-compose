@@ -13,13 +13,16 @@ services:
     volumes:
       - ${PROJECT_DIR}:/workspace:Z
       - ${PROJECT_DIR}/.claw:/root/.claw:Z
+      - ${PROJECT_DIR}/.claw/settings.json:/root/.config/claw/settings.json:ro
     environment:
       - container=
+      - docker=
+      - podman=
+      - kubernetes_service_host=
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-dummy}
       - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - CLAW_MODEL=${CLAW_MODEL:-openai/qwen3:14b}
-      - ANTHROPIC_SANDBOX=false
     network_mode: host

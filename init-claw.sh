@@ -67,11 +67,15 @@ exec $RUNTIME run \
    --network=host \
    -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
    -e container= \
+   -e docker= \
+   -e podman= \
+   -e kubernetes_service_host= \
    -e ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-}" \
    -e OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}" \
    -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
    -e CLAW_MODEL="${CLAW_MODEL:-}" \
    -v "${PROJECT_DIR}:/workspace:Z" \
    -v "${PROJECT_DIR}/.claw:/root/.claw:Z" \
+   -v "${PROJECT_DIR}/.claw/settings.json:/root/.config/claw/settings.json:ro" \
    -w /workspace \
    claw-code:latest claw --permission-mode danger-full-access $MODEL_FLAG "$@"

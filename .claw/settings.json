@@ -1,0 +1,6 @@
+{
+  "sandbox": {
+    "enabled": false
+  },
+  "model": "openai/qwen3:14b"
+}
