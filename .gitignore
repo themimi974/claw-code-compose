@@ -1,5 +1,6 @@
-# Environment files
+# Environment files (actual secrets - do not commit)
 .env
+.env.local
 
 # Session data (local persistence)
 .claw-code/
