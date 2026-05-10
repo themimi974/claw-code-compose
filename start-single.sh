@@ -1,59 +1,67 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ok()   { echo -e "\033[32m✔\033[0m $*"; }
-info() { echo -e "\033[34mℹ\033[0m $*"; }
-err()  { echo -e "\033[31m✘\033[0m $*"; exit 1; }
 
-# --- Detect container runtime ---
-COMPOSE_PROVIDER=""
-if command -v podman &>/dev/null; then
-    ENGINE=podman
-    # Check for native podman compose (not the podman-compose wrapper)
-    # If "podman compose version" shows "podman-compose" in output, it's the wrapper
-    if podman compose version 2>&1 | grep -qv "podman-compose"; then
-        COMPOSE_PROVIDER="native"
-    elif command -v podman-compose &>/dev/null; then
-        COMPOSE_PROVIDER="podman-compose"
-    fi
-fi
-
-if [[ -z "$ENGINE" ]] && command -v docker &>/dev/null; then
-    ENGINE=docker
-    COMPOSE_PROVIDER="native"
-fi
-
-if [[ -z "$ENGINE" ]]; then
-    err "No container runtime found (need docker or podman)"
-fi
-
-# If still can't determine, default to podman-compose
-if [[ -z "$COMPOSE_PROVIDER" ]] && command -v podman-compose &>/dev/null; then
-    COMPOSE_PROVIDER="podman-compose"
-fi
-
-# --- Find compose file ---
+# Resolve script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
-if [[ ! -f "$COMPOSE_FILE" ]]; then
-    err "docker-compose.yml not found in $SCRIPT_DIR"
+PROJECT_DIR="$(pwd)"
+
+export PROJECT_DIR
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
+
+# Load .env from parent dir
+if [ -f "$PROJECT_DIR/.env" ]; then
+   set -a; source "$PROJECT_DIR/.env"; set +a
 fi
 
-# --- Dynamic container name from project dir ---
-PROJECT_NAME="${PWD##*/}"
-CONTAINER_NAME="claw-${PROJECT_NAME//-/}"
-info "Using $ENGINE ($COMPOSE_PROVIDER), project: $PROJECT_NAME"
+# Detect compose
+detect_compose() {
+   if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
+       echo "docker compose"
+   elif command -v podman-compose &>/dev/null; then
+       echo "podman-compose"
+   elif command -v docker-compose &>/dev/null; then
+       echo "docker-compose"
+   else echo ""; fi
+}
 
-# --- Cleanup old container ---
-podman rm -f "$CONTAINER_NAME" 2>/dev/null || true
-docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+COMPOSE=$(detect_compose)
+if [ -z "$COMPOSE" ]; then
+   echo -e "${RED}Error: docker compose or podman-compose not found.${NC}"; exit 1
+fi
 
-# --- Run ---
-cd "$SCRIPT_DIR"
+echo -e "${CYAN}Using $COMPOSE in: ${PROJECT_DIR}${NC}\n"
 
-if [[ "$COMPOSE_PROVIDER" == "podman-compose" ]]; then
-    # podman-compose: append "claw" command to run the CLI
-    PROJECT_NAME="$PROJECT_NAME" podman-compose -f "$COMPOSE_FILE" up --build claw claw
+# Build if needed
+$COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" build
+
+# Run with compose
+if command -v podman &>/dev/null; then
+    RUNTIME="podman"
+    EXTRA_FLAGS="--userns=keep-id"
+elif command -v docker &>/dev/null; then
+    RUNTIME="docker"
+    EXTRA_FLAGS=""
 else
-    # Native docker/podman compose: use run instead of up for interactive command
-    PROJECT_NAME="$ENGINE"="$ENGINE" $ENGINE compose -f "$COMPOSE_FILE" run --rm claw claw
+    echo -e "${RED}Error: neither podman nor docker found.${NC}"; exit 1
 fi
+
+MODEL_FLAG=""
+if [ -n "$CLAW_MODEL" ]; then
+   MODEL_FLAG="--model $CLAW_MODEL"
+fi
+
+exec $RUNTIME run \
+   --rm -it \
+   $EXTRA_FLAGS \
+   --network=host \
+   -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
+   -e container= \
+   -e ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-}" \
+   -e OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}" \
+   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
+   -e CLAW_MODEL="${CLAW_MODEL:-}" \
+   -v "${PROJECT_DIR}:/workspace:Z" \
+   -v "${SCRIPT_DIR}/claw-config.json:/root/.config/claw-code/config.json:Z" \
+   -w /workspace \
+   claw-code:latest $MODEL_FLAG "$@"

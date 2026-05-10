@@ -1,24 +1,23 @@
 services:
-  claw:
-    build: .
+  claw-code:
+    image: claw-code:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: claw-${PROJECT_NAME:-default}
     stdin_open: true
     tty: true
-
     working_dir: /workspace
-
     env_file:
       - ../.env
     volumes:
-      # Only the current directory is exposed to the container
-      - ../:/workspace:z
-      - ./claw.json:/workspace/claw.json:ro,z
-      - ./.claw-code:/workspace/.claw-code/:rw,z
-      - ./AGENTS.md:/workspace/AGENTS.md:rw,z
+      - ${PROJECT_DIR}:/workspace:Z
     environment:
-      - ANTHROPIC_SANDBOX=false
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CLAW_MODEL=${CLAW_MODEL}
-    network_mode: bridge
-    restart: "no"
+      - container=
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-dummy}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - CLAW_MODEL=${CLAW_MODEL:-openai/qwen3:14b}
+    network_mode: host

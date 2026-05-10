@@ -9,8 +9,15 @@ Claw Code instances manager using Docker/Podman Compose.
 git clone https://github.com/themimi974/claw-code-compose.git
 cd claw-code-compose
 
+# Create .env file (copy from .env.example)
+cp .env.example .env
+# Edit .env with your API configuration
+
 # Run Claw Code
 ./start-single.sh
+
+# Or use the bootstrapper
+./init-claw.sh
 ```
 
 ## Prerequisites
@@ -50,6 +57,34 @@ init-claw
 - **SSH key support** - Clone private repos by mounting SSH keys
 - **Config sync** - Sync global Claw Code config into project
 - **Sessions persistence** - Local `.claw-code/` directory preserves sessions
+- **OpenAI compatible** - Use with LLM gateways (Ollama, LiteLLM, etc.)
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+# OpenAI Compatible API (LLM Gateway)
+OPENAI_BASE_URL=http://100.64.0.34:8082/v1
+OPENAI_API_KEY=anything
+CLAW_MODEL=openai/minimax-m2.5-free
+
+# Or use Anthropic
+# ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### Claw Config
+
+Edit `claw-config.json` for Claw Code settings:
+
+```json
+{
+  "model": "openai/qwen3:14b",
+  "system_prompt": "You are a helpful coding assistant."
+}
+```
 
 ## Scripts
 
@@ -59,24 +94,6 @@ init-claw
 | `init-claw.sh` | Bootstrap new Claw Code environment |
 | `install-init-claw.sh` | Install init-claw to system |
 | `uninstall-init-claw.sh` | Uninstall init-claw from system |
-
-## Configuration
-
-### Claw Code Model
-
-Edit `claw.json` to configure Claw Code:
-
-```json
-{
-  "model": "claude-sonnet-4-20250514",
-  "system_prompt": "You are a helpful coding assistant."
-}
-```
-
-### Environment Variables
-
-- `ANTHROPIC_API_KEY` - Set your Anthropic API key (required)
-- `ANTHROPIC_SANDBOX=false` - Sandbox is disabled by default for --rm containers
 
 ## License
 

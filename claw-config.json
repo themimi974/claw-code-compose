@@ -1,0 +1,4 @@
+{
+  "model": "openai/qwen3:14b",
+  "system_prompt": "You are a helpful coding assistant."
+}

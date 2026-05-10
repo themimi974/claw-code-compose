@@ -1,183 +1,77 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-# ═══════════════════════════════════════════════════════════════════
-# init-claw - Bootstrap Claw Code environment
-# ═══════════════════════════════════════════════════════════════════
+# Resolve symlinks to find the real script location
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+   DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+   SOURCE="$(readlink "$SOURCE")"
+   [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 
-ok()   { echo -e "\033[32m✔\033[0m $*"; }
-info() { echo -e "\033[34mℹ\033[0m $*"; }
-err()  { echo -e "\033[31m✘\033[0m $*"; exit 1; }
+export PROJECT_DIR="$(pwd)"
 
-# Use current working directory, not script location
-# This ensures .claw-code-compose is created where the user runs the command
-WORKING_DIR="$(pwd)"
-CLAW_DIR="$WORKING_DIR/.claw-code-compose"
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 
-# --- Placeholder repo ---
-PLACEHOLDER_REPO="https://github.com/themimi974/claw-code-compose.git"
-
-# ═══════════════════════════════════════════════════════════════════
-# Step 1: Check if .claw-code-compose exists
-# ═══════════════════════════════════════════════════════════════════
-
-if [[ -d "$CLAW_DIR" ]]; then
-    info ".claw-code-compose/ already exists in $(pwd)"
-    read -p "Reset (re-clone repo)? [y/N] " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        info "Removing existing .claw-code-compose/..."
-        rm -rf "$CLAW_DIR"
-    else
-        ok "Using existing .claw-code-compose/"
-    fi
+# Load .env from parent dir (where user runs init-claw)
+if [ -f "$PROJECT_DIR/.env" ]; then
+   set -a; source "$PROJECT_DIR/.env"; set +a
 fi
 
-# ═══════════════════════════════════════════════════════════════════
-# Step 2: Git clone if directory was missing or reset
-# ═══════════════════════════════════════════════════════════════════
+detect_compose() {
+   if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
+       echo "docker compose"
+   elif command -v docker-compose &>/dev/null; then
+       echo "docker-compose"
+   elif command -v podman-compose &>/dev/null; then
+       echo "podman-compose"
+   else echo ""; fi
+}
 
-if [[ ! -d "$CLAW_DIR" ]]; then
-    info "Cloning placeholder repo..."
-    if git clone "$PLACEHOLDER_REPO" "$CLAW_DIR" 2>/dev/null; then
-        ok "Repository cloned to .claw-code-compose/"
-    else
-        # Fallback: copy local template if clone fails
-        info "Clone failed, using local template..."
-        LOCAL_TEMPLATE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        if [[ -d "$LOCAL_TEMPLATE" ]]; then
-            cp -r "$LOCAL_TEMPLATE" "$WORKING_DIR/.claw-code-compose"
-            ok "Local template copied to .claw-code-compose/"
-        else
-            err "No template found. Please create .claw-code-compose/ manually."
-        fi
-    fi
+COMPOSE=$(detect_compose)
+if [ -z "$COMPOSE" ]; then
+   echo -e "${RED}Error: docker compose or podman-compose not found.${NC}"; exit 1
 fi
 
-# ═══════════════════════════════════════════════════════════════════
-# Step 3: SSH key selection
-# ═══════════════════════════════════════════════════════════════════
-
-USER_SSH_DIR="$HOME/.ssh"
-SSH_VOLUME=""
-
-if [[ -d "$USER_SSH_DIR" ]]; then
-    echo
-    info "SSH key options:"
-    echo "  1) No SSH (local-only, no git remote)"
-    echo "  2) Mount specific key"
-    echo "  3) Mount entire ~/.ssh"
-    read -p "Choose [1-3]: " -n 1 -r
-    echo
-
-    case $REPLY in
-        1)
-            ok "No SSH configured (local-only mode)"
-            ;;
-        2)
-            # List available private keys
-            shopt -s nullglob
-            keys=()
-            for f in "$USER_SSH_DIR"/*; do
-                filename="$(basename "$f")"
-                if [[ ! "$filename" =~ \.pub$ ]] && [[ ! "$filename" =~ ^known_hosts ]]; then
-                    keys+=("$f")
-                fi
-            done
-            
-            if [[ ${#keys[@]} -eq 0 ]]; then
-                err "No private keys found in $USER_SSH_DIR"
-            fi
-            
-            echo "Available keys:"
-            select key in "${keys[@]}"; do
-                if [[ -z "$key" ]]; then
-                    echo "Invalid selection. Please enter a number."
-                elif [[ -n "$key" ]]; then
-                    break
-                fi
-            done
-            
-            KEY_NAME="$(basename "$key")"
-            SSH_VOLUME="- $key:/root/.ssh/$KEY_NAME:ro,z"
-            if [[ -f "$USER_SSH_DIR/config" ]]; then
-                SSH_VOLUME="$SSH_VOLUME\n      - $USER_SSH_DIR/config:/root/.ssh/config:ro,z"
-                info "SSH config file will also be mounted"
-            fi
-            ok "Selected key: $KEY_NAME"
-            ;;
-        3)
-            SSH_VOLUME="- $USER_SSH_DIR:/root/.ssh:ro,z"
-            ok "Mounting entire ~/.ssh"
-            ;;
-        *)
-            err "Invalid option"
-            ;;
-    esac
-else
-    info "No ~/.ssh directory found, skipping SSH config"
+if [ -z "$OPENAI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
+   echo -e "${YELLOW}Warning: No API key set. Edit $PROJECT_DIR/.env${NC}\n"
 fi
 
-# ═══════════════════════════════════════════════════════════════════
-# Step 4: Update docker-compose.yml with SSH volume
-# ═══════════════════════════════════════════════════════════════════
-
-COMPOSE_FILE="$CLAW_DIR/docker-compose.yml"
-if [[ -n "$SSH_VOLUME" ]]; then
-    info "Updating docker-compose.yml with SSH volume..."
-    
-    if grep -q "^    volumes:" "$COMPOSE_FILE"; then
-        sed -i "/^    volumes:/a\\      $SSH_VOLUME" "$COMPOSE_FILE"
-    else
-        err "Could not find volumes section in docker-compose.yml"
-    fi
-    ok "SSH volume added"
+# Build image if missing
+if ! podman images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -q "localhost/claw-code:latest" && \
+  ! docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -q "^claw-code:latest$" 2>/dev/null; then
+   echo -e "${CYAN}Building claw-code image (first run, ~5 min)...${NC}"
+   $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" build
+   echo -e "${GREEN}Image built.${NC}"
 fi
 
-# ═══════════════════════════════════════════════════════════════════
-# Step 5: Global config detection and sync
-# ═══════════════════════════════════════════════════════════════════
+echo -e "${CYAN}Starting claw-code in: ${PROJECT_DIR}${NC}\n"
 
-GLOBAL_CONFIG="$HOME/.config/claw/claw.json"
-GLOBAL_DATA="$HOME/.local/share/claw"
-LOCAL_CLAW="$CLAW_DIR/.claw-code"
+if command -v podman &>/dev/null; then
+RUNTIME="podman"
+elif command -v docker &>/dev/null; then
+RUNTIME="docker"
+else echo -e "${RED}Error: neither podman nor docker found.${NC}"; exit 1; fi
 
-echo
-if [[ -f "$GLOBAL_CONFIG" ]] || [[ -d "$GLOBAL_DATA" ]]; then
-    info "Found global Claw Code config/data"
-    if [[ -d "$LOCAL_CLAW" ]] && [[ -n "$(ls -A "$LOCAL_CLAW" 2>/dev/null)" ]]; then
-        info "Local .claw-code/ already has data (sessions preserved)"
-        read -p "Sync global config? This will merge/overwrite some files. [y/N] " -n 1 -r
-        echo
-    else
-        read -p "Sync global config into project? [y/N] " -n 1 -r
-        echo
-    fi
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        mkdir -p "$LOCAL_CLAW"
-        [[ -f "$GLOBAL_CONFIG" ]] && cp "$GLOBAL_CONFIG" "$LOCAL_CLAW/" && ok "Copied global config"
-        [[ -d "$GLOBAL_DATA" ]] && cp -rn "$GLOBAL_DATA"/* "$LOCAL_CLAW/" 2>/dev/null && ok "Copied global data (-n prevents overwrite)"
-    fi
-else
-    info "No global config found at $GLOBAL_CONFIG"
-    read -p "Initialize fresh local config? [Y/n] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-        mkdir -p "$LOCAL_CLAW"
-        ok "Created local .claw-code/ directory"
-    fi
+[ "$RUNTIME" = "podman" ] && EXTRA_FLAGS="--userns=keep-id" || EXTRA_FLAGS=""
+
+MODEL_FLAG=""
+if [ $# -eq 0 ] && [ -n "$CLAW_MODEL" ]; then
+   MODEL_FLAG="--model $CLAW_MODEL"
 fi
 
-# ═══════════════════════════════════════════════════════════════════
-# Step 6: Run start-single.sh
-# ═══════════════════════════════════════════════════════════════════
-
-echo
-START_SCRIPT="$CLAW_DIR/start-single.sh"
-if [[ -f "$START_SCRIPT" ]]; then
-    info "Launching Claw Code..."
-    cd "$CLAW_DIR"
-    bash "$START_SCRIPT"
-else
-    err "start-single.sh not found in .claw-code-compose/"
-fi
+exec $RUNTIME run \
+   --rm -it \
+   $EXTRA_FLAGS \
+   --network=host \
+   -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
+   -e container= \
+   -e ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-}" \
+   -e OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}" \
+   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
+   -e CLAW_MODEL="${CLAW_MODEL:-}" \
+   -v "${PROJECT_DIR}:/workspace:Z" \
+   -v "${SCRIPT_DIR}/claw-config.json:/root/.config/claw-code/config.json:Z" \
+   -w /workspace \
+   claw-code:latest $MODEL_FLAG "$@"
