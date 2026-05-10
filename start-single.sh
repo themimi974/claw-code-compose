@@ -14,7 +14,7 @@ if [ -f "$PROJECT_DIR/.env" ]; then
    set -a; source "$PROJECT_DIR/.env"; set +a
 fi
 
-# Detect compose
+# Detect compose provider
 detect_compose() {
    if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
        echo "docker compose"
@@ -35,33 +35,11 @@ echo -e "${CYAN}Using $COMPOSE in: ${PROJECT_DIR}${NC}\n"
 # Build if needed
 $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" build
 
-# Run with compose
-if command -v podman &>/dev/null; then
-    RUNTIME="podman"
-    EXTRA_FLAGS="--userns=keep-id"
-elif command -v docker &>/dev/null; then
-    RUNTIME="docker"
-    EXTRA_FLAGS=""
-else
-    echo -e "${RED}Error: neither podman nor docker found.${NC}"; exit 1
-fi
-
+# Run via compose
 MODEL_FLAG=""
 if [ -n "$CLAW_MODEL" ]; then
    MODEL_FLAG="--model $CLAW_MODEL"
 fi
 
-exec $RUNTIME run \
-   --rm -it \
-   $EXTRA_FLAGS \
-   --network=host \
-   -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
-   -e container= \
-   -e ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-}" \
-   -e OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}" \
-   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
-   -e CLAW_MODEL="${CLAW_MODEL:-}" \
-   -v "${PROJECT_DIR}:/workspace:Z" \
-   -v "${SCRIPT_DIR}/claw-config.json:/root/.config/claw-code/config.json:Z" \
-   -w /workspace \
-   claw-code:latest $MODEL_FLAG "$@"
+# Use compose up with the service and pass claw command
+exec $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" up --build claw-code $MODEL_FLAG "$@"
