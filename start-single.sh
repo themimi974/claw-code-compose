@@ -35,11 +35,10 @@ echo -e "${CYAN}Using $COMPOSE in: ${PROJECT_DIR}${NC}\n"
 # Build if needed
 $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" build
 
-# Run via compose
+# Run via compose (--rm to remove container after exit)
 MODEL_FLAG=""
 if [ -n "$CLAW_MODEL" ]; then
    MODEL_FLAG="--model $CLAW_MODEL"
 fi
 
-# Use compose up with the service and pass claw command
-exec $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" up --build claw-code $MODEL_FLAG "$@"
+exec $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" run --rm claw-code $MODEL_FLAG "$@"
