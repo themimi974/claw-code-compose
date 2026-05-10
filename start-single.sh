@@ -51,9 +51,9 @@ docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 cd "$SCRIPT_DIR"
 
 if [[ "$COMPOSE_PROVIDER" == "podman-compose" ]]; then
-    # podman-compose doesn't support --rm, containers auto-remove after exit
-    PROJECT_NAME="$PROJECT_NAME" podman-compose -f "$COMPOSE_FILE" up --build claw
+    # podman-compose: append "claw" command to run the CLI
+    PROJECT_NAME="$PROJECT_NAME" podman-compose -f "$COMPOSE_FILE" up --build claw claw
 else
-    # Native docker/podman compose supports --rm
-    PROJECT_NAME="$ENGINE"="$ENGINE" $ENGINE compose -f "$COMPOSE_FILE" up --build --rm claw
+    # Native docker/podman compose: use run instead of up for interactive command
+    PROJECT_NAME="$ENGINE"="$ENGINE" $ENGINE compose -f "$COMPOSE_FILE" run --rm claw claw
 fi
