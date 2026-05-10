@@ -1,4 +1,4 @@
-FROM rust:1.88-bookworm
+FROM rust:latest-bookworm
 
 # Install dependencies
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
