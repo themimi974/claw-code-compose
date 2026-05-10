@@ -5,8 +5,9 @@
 # Claw Code project (local bootstrap)
 .claw-code-compose/
 
-# Claw data (settings + sessions)
-.claw/
+# Claw data (sessions, plugins - do not commit)
+.claw/sessions/
+.claw/plugins/
 
 # Temporary files
 temp/
