@@ -74,4 +74,4 @@ exec $RUNTIME run \
    -v "${PROJECT_DIR}:/workspace:Z" \
    -v "${SCRIPT_DIR}/claw-config.json:/root/.config/claw-code/config.json:Z" \
    -w /workspace \
-   claw-code:latest $MODEL_FLAG "$@"
+   claw-code:latest --dangerously-skip-permissions $MODEL_FLAG "$@"
