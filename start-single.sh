@@ -4,18 +4,15 @@ set -euo pipefail
 # Resolve script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# PROJECT_DIR is set by init-claw, or use parent of SCRIPT_DIR (the project directory)
-if [[ -z "${PROJECT_DIR:-}" ]]; then
-    PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-fi
-
+# PROJECT_DIR = parent of SCRIPT_DIR (user's project directory)
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 export PROJECT_DIR
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
 
-# Load .env from parent dir
-if [ -f "$PROJECT_DIR/.env" ]; then
-   set -a; source "$PROJECT_DIR/.env"; set +a
+# Load .env from the repo (inside .claw-code-compose/)
+if [ -f "$SCRIPT_DIR/.env" ]; then
+   set -a; source "$SCRIPT_DIR/.env"; set +a
 fi
 
 # Detect compose provider
