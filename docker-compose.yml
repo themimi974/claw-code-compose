@@ -9,7 +9,7 @@ services:
     tty: true
     working_dir: /workspace
     env_file:
-      - ../.env
+      - .env
     volumes:
       - ${PROJECT_DIR}:/workspace:Z
       - ${PROJECT_DIR}/.claw:/root/.claw:Z
