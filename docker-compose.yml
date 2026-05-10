@@ -1,0 +1,20 @@
+services:
+  claw:
+    build: .
+    container_name: claw-${PROJECT_NAME:-default}
+    stdin_open: true
+    tty: true
+
+    working_dir: /workspace
+
+    volumes:
+      # Only the current directory is exposed to the container
+      - ../:/workspace:z
+      - ./claw.json:/workspace/claw.json:ro,z
+      - ./.claw-code:/workspace/.claw-code/:rw,z
+      - ./AGENTS.md:/workspace/AGENTS.md:rw,z
+    environment:
+      # Disable sandbox for --rm container usage
+      - ANTHROPIC_SANDBOX=false
+    network_mode: bridge
+    restart: "no"
