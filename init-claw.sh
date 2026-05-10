@@ -54,7 +54,8 @@ elif command -v docker &>/dev/null; then
 RUNTIME="docker"
 else echo -e "${RED}Error: neither podman nor docker found.${NC}"; exit 1; fi
 
-[ "$RUNTIME" = "podman" ] && EXTRA_FLAGS="--userns=keep-id" || EXTRA_FLAGS=""
+# Run as root to allow package installation
+EXTRA_FLAGS=""
 
 MODEL_FLAG=""
 if [ $# -eq 0 ] && [ -n "$CLAW_MODEL" ]; then
