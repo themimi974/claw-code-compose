@@ -48,35 +48,5 @@ fi
 
 echo -e "${CYAN}Starting claw-code in: ${PROJECT_DIR}${NC}\n"
 
-if command -v podman &>/dev/null; then
-RUNTIME="podman"
-elif command -v docker &>/dev/null; then
-RUNTIME="docker"
-else echo -e "${RED}Error: neither podman nor docker found.${NC}"; exit 1; fi
-
-# Run as root to allow package installation
-EXTRA_FLAGS=""
-
-MODEL_FLAG=""
-if [ $# -eq 0 ] && [ -n "$CLAW_MODEL" ]; then
-   MODEL_FLAG="--model $CLAW_MODEL"
-fi
-
-exec $RUNTIME run \
-   --rm -it \
-   $EXTRA_FLAGS \
-   --network=host \
-   -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
-   -e container= \
-   -e docker= \
-   -e podman= \
-   -e kubernetes_service_host= \
-   -e ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-}" \
-   -e OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}" \
-   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
-   -e CLAW_MODEL="${CLAW_MODEL:-}" \
-   -v "${PROJECT_DIR}:/workspace:Z" \
-   -v "${PROJECT_DIR}/.claw:/root/.claw:Z" \
-   -v "${PROJECT_DIR}/.claw/settings.json:/root/.config/claw/settings.json:ro" \
-   -w /workspace \
-   claw-code:latest claw --permission-mode danger-full-access $MODEL_FLAG "$@"
+# Use start-single.sh which uses docker compose run
+exec "$SCRIPT_DIR/start-single.sh" "$@"
