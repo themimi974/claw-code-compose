@@ -13,8 +13,8 @@ RUN cargo build -p rusty-claude-cli --release \
     && cp target/release/claw /usr/local/bin/claw \
     && chmod +x /usr/local/bin/claw
 
-# Install TUI dependencies
-RUN pip3 install --no-cache-dir textual
+# Install TUI dependencies (--break-system-packages for PEP 668 compliance)
+RUN pip3 install --no-cache-dir --break-system-packages textual
 
 # Copy TUI code
 COPY claw-tui /opt/claw-tui
