@@ -120,18 +120,18 @@ class ClawTUI(App):
 
         # Tabbed content
         with TabbedContent():
-            Tab("Dashboard", id="tab-dashboard"):
-                DashboardScreen()
-            Tab("Sessions", id="tab-sessions"):
-                SessionsScreen()
-            Tab("Agents", id="tab-agents"):
-                AgentsScreen()
-            Tab("Permissions", id="tab-permissions"):
-                PermissionsScreen()
-            Tab("Commands", id="tab-commands"):
-                CommandsScreen()
-            Tab("Chat", id="tab-chat"):
-                ChatScreen()
+            with Tab("Dashboard", id="tab-dashboard"):
+                yield DashboardScreen()
+            with Tab("Sessions", id="tab-sessions"):
+                yield SessionsScreen()
+            with Tab("Agents", id="tab-agents"):
+                yield AgentsScreen()
+            with Tab("Permissions", id="tab-permissions"):
+                yield PermissionsScreen()
+            with Tab("Commands", id="tab-commands"):
+                yield CommandsScreen()
+            with Tab("Chat", id="tab-chat"):
+                yield ChatScreen()
 
         # Footer
         yield Container(
