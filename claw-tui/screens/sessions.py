@@ -71,7 +71,9 @@ class SessionsScreen(Static):
 
     def update_session_list(self) -> None:
         list_container = self.query_one("#session-list", VerticalScroll)
-        list_container.remove_all()
+        # Remove all children properly
+        for child in list_container.children:
+            child.remove()
 
         if not self.sessions:
             list_container.mount(Static("No sessions found. Press 'n' to create one.", classes="empty-message"))

@@ -55,7 +55,8 @@ class CommandsScreen(Static):
 
     def update_command_list(self) -> None:
         list_container = self.query_one("#command-list", VerticalScroll)
-        list_container.remove_all()
+        for child in list_container.children:
+            child.remove()
 
         # Build a grid-like display
         for i, cmd in enumerate(self.COMMANDS):

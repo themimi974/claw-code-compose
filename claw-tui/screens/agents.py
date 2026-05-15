@@ -47,7 +47,8 @@ class AgentsScreen(Static):
 
     def update_agent_list(self) -> None:
         list_container = self.query_one("#agent-list", VerticalScroll)
-        list_container.remove_all()
+        for child in list_container.children:
+            child.remove()
 
         if not self.agents:
             list_container.mount(Static("No agents configured.", classes="empty-message"))

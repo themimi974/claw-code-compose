@@ -39,7 +39,8 @@ class PermissionsScreen(Static):
 
     def update_permission_list(self) -> None:
         list_container = self.query_one("#permission-list", VerticalScroll)
-        list_container.remove_all()
+        for child in list_container.children:
+            child.remove()
 
         # Add warning header if danger-full-access is current
         if self.current_permission == "danger-full-access":
