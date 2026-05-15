@@ -1,8 +1,7 @@
 from textual.app import ComposeResult
-from textual.containers import Container, VerticalScroll, Grid
-from textual.widgets import Static, Button
+from textual.widgets import Static
 from textual.binding import Binding
-from typing import List, Tuple
+from typing import List
 
 
 class CommandItem:
@@ -31,8 +30,6 @@ class CommandsScreen(Static):
         CommandItem("/config env", "Show environment config"),
         CommandItem("/history", "Show conversation history"),
         CommandItem("/stats", "Show workspace stats"),
-        CommandItem("/version", "Show CLI version"),
-        CommandItem("/doctor", "Diagnose setup issues"),
     ]
 
     def __init__(self):
@@ -40,12 +37,9 @@ class CommandsScreen(Static):
         self.selected_index: int = 0
 
     def compose(self) -> ComposeResult:
-        yield Container(
-            Static("⚡ Commands", classes="section-title"),
-            Static("↑↓←→ Navigate | Enter: Execute", classes="hint-bar"),
-            VerticalScroll(id="command-list"),
-            id="commands-container"
-        )
+        yield Static("⚡ Commands", classes="section-title")
+        yield Static("Arrow keys: Navigate | Enter: Execute", classes="hint-bar")
+        yield Static("", id="command-list")
 
     def on_mount(self) -> None:
         self.update_command_list()
@@ -54,36 +48,26 @@ class CommandsScreen(Static):
         self.update_command_list()
 
     def update_command_list(self) -> None:
-        list_container = self.query_one("#command-list", VerticalScroll)
-        for child in list_container.children:
-            child.remove()
+        list_widget = self.query_one("#command-list", Static)
 
-        # Build a grid-like display
+        lines = []
         for i, cmd in enumerate(self.COMMANDS):
-            is_selected = i == self.selected_index
-            classes = "command-item selected" if is_selected else "command-item"
-            list_container.mount(
-                Static(f"[b]{cmd.command:<20}[/b] - {cmd.description}", classes=classes)
-            )
+            marker = ">" if i == self.selected_index else " "
+            lines.append(f"{marker} {cmd.command:<20} - {cmd.description}")
 
-    def action_execute_command(self) -> None:
-        """Execute the selected command."""
-        if self.selected_index >= len(self.COMMANDS):
-            return
+        list_widget.update("\n".join(lines))
 
-        cmd = self.COMMANDS[self.selected_index]
-        self.notify(f"Executing: {cmd.command}...")
-
-        from services.claw_cli import claw_cli
-
-        # Parse command - remove leading slash
-        args = cmd.command[1:].split()
-        code, stdout, stderr = claw_cli.run(*args)
-
-        # Show output
-        output = stdout if stdout else stderr
-        if not output:
-            output = "(no output)"
-
-        # Display result (in a real implementation, would show in a modal)
-        self.notify(f"Done: {code == 0}")
+    def on_key(self, event) -> None:
+        if event.key == "up":
+            if self.selected_index > 0:
+                self.selected_index -= 1
+                self.update_command_list()
+        elif event.key == "down":
+            if self.selected_index < len(self.COMMANDS) - 1:
+                self.selected_index += 1
+                self.update_command_list()
+        elif event.key == "enter":
+            cmd = self.COMMANDS[self.selected_index]
+            from services.claw_cli import claw_cli
+            args = cmd.command[1:].split()
+            code, stdout, stderr = claw_cli.run(*args)

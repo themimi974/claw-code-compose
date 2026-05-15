@@ -1,8 +1,6 @@
 from textual.app import ComposeResult
-from textual.containers import Container, VerticalScroll
 from textual.widgets import Static
 from textual.binding import Binding
-from typing import List
 
 
 class PermissionsScreen(Static):
@@ -24,12 +22,9 @@ class PermissionsScreen(Static):
         self.selected_index: int = 0
 
     def compose(self) -> ComposeResult:
-        yield Container(
-            Static("🛡️ Permissions", classes="section-title"),
-            Static("↑↓ Navigate | Enter: Switch | r: Refresh", classes="hint-bar"),
-            VerticalScroll(id="permission-list"),
-            id="permissions-container"
-        )
+        yield Static("🛡️ Permissions", classes="section-title")
+        yield Static("Arrow keys: Navigate | Enter: Switch | r: Refresh", classes="hint-bar")
+        yield Static("", id="permission-list")
 
     def on_mount(self) -> None:
         self.update_permission_list()
@@ -38,45 +33,34 @@ class PermissionsScreen(Static):
         self.update_permission_list()
 
     def update_permission_list(self) -> None:
-        list_container = self.query_one("#permission-list", VerticalScroll)
-        for child in list_container.children:
-            child.remove()
+        list_widget = self.query_one("#permission-list", Static)
 
-        # Add warning header if danger-full-access is current
+        lines = []
         if self.current_permission == "danger-full-access":
-            list_container.mount(
-                Static("⚠️  Current: danger-full-access", classes="warning-text")
-            )
-            list_container.mount(Static(""))
+            lines.append("⚠️  Current: danger-full-access")
+            lines.append("")
 
         for i, (mode, description) in enumerate(self.PERMISSION_MODES):
-            is_current = mode == self.current_permission
-            classes = "permission-item selected" if is_current else "permission-item"
-            marker = "●" if is_current else "○"
+            marker = ">" if i == self.selected_index else " "
+            lines.append(f"{marker} {mode}")
+            lines.append(f"   {description}")
+            lines.append("")
 
-            if mode.startswith("danger"):
-                classes += " danger"
+        list_widget.update("\n".join(lines))
 
-            list_container.mount(
-                Static(f"{marker} [b]{mode}[/b]\n   {description}", classes=classes)
-            )
-
-    def action_switch_permission(self) -> None:
-        """Switch to selected permission mode."""
-        if self.selected_index >= len(self.PERMISSION_MODES):
-            return
-
-        new_permission = self.PERMISSION_MODES[self.selected_index][0]
-
-        if new_permission == "danger-full-access":
-            self.notify("⚠️ Switching to danger-full-access mode!", severity="warning")
-
-        from services.claw_cli import claw_cli
-        success, msg = claw_cli.switch_permission(new_permission)
-
-        if success:
-            self.current_permission = new_permission
-            self.notify(f"Switched to: {new_permission}")
+    def on_key(self, event) -> None:
+        if event.key == "up":
+            if self.selected_index > 0:
+                self.selected_index -= 1
+                self.update_permission_list()
+        elif event.key == "down":
+            if self.selected_index < len(self.PERMISSION_MODES) - 1:
+                self.selected_index += 1
+                self.update_permission_list()
+        elif event.key == "enter":
+            new_permission = self.PERMISSION_MODES[self.selected_index][0]
+            from services.claw_cli import claw_cli
+            success, msg = claw_cli.switch_permission(new_permission)
+            if success:
+                self.current_permission = new_permission
             self.update_permission_list()
-        else:
-            self.notify(f"Failed: {msg}", severity="error")

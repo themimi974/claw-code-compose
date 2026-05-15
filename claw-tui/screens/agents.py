@@ -1,5 +1,4 @@
 from textual.app import ComposeResult
-from textual.containers import Container, VerticalScroll
 from textual.widgets import Static
 from textual.binding import Binding
 from typing import List
@@ -19,12 +18,9 @@ class AgentsScreen(Static):
         self.selected_index: int = 0
 
     def compose(self) -> ComposeResult:
-        yield Container(
-            Static("🤖 Agents", classes="section-title"),
-            Static("↑↓ Navigate | Enter: Switch | r: Refresh", classes="hint-bar"),
-            VerticalScroll(id="agent-list"),
-            id="agents-container"
-        )
+        yield Static("🤖 Agents", classes="section-title")
+        yield Static("Arrow keys: Navigate | Enter: Switch | r: Refresh", classes="hint-bar")
+        yield Static("No agents configured.", id="agent-list")
 
     def on_mount(self) -> None:
         self.refresh_agents()
@@ -35,37 +31,33 @@ class AgentsScreen(Static):
     def refresh_agents(self) -> None:
         from services.config import config_manager
 
-        # Get agents from config - in real implementation, this would query the CLI
         workspace_config = config_manager.get_workspace_config()
         model = workspace_config.get("model", "claude-sonnet-4-20250514")
-
-        # For now, show the model as the agent
         self.agents = [model]
         self.current_agent = model
-
         self.update_agent_list()
 
     def update_agent_list(self) -> None:
-        list_container = self.query_one("#agent-list", VerticalScroll)
-        for child in list_container.children:
-            child.remove()
+        list_widget = self.query_one("#agent-list", Static)
 
         if not self.agents:
-            list_container.mount(Static("No agents configured.", classes="empty-message"))
+            list_widget.update("No agents configured.")
             return
 
+        lines = []
         for i, agent in enumerate(self.agents):
-            is_current = agent == self.current_agent
-            classes = "agent-item selected" if is_current else "agent-item"
-            marker = "●" if is_current else "○"
-            list_container.mount(
-                Static(f"{marker} {agent}", classes=classes)
-            )
+            marker = ">" if i == self.selected_index else " "
+            current = " (current)" if agent == self.current_agent else ""
+            lines.append(f"{marker} {agent}{current}")
 
-    def action_switch_agent(self) -> None:
-        """Switch to selected agent."""
-        if not self.agents or self.selected_index >= len(self.agents):
-            return
+        list_widget.update("\n".join(lines))
 
-        # In implementation, this would call claw CLI to switch agent
-        self.notify(f"Switching to agent: {self.agents[self.selected_index]}")
+    def on_key(self, event) -> None:
+        if event.key == "up":
+            if self.selected_index > 0:
+                self.selected_index -= 1
+                self.update_agent_list()
+        elif event.key == "down":
+            if self.selected_index < len(self.agents) - 1:
+                self.selected_index += 1
+                self.update_agent_list()

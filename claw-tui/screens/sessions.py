@@ -1,26 +1,8 @@
 from textual.app import ComposeResult
-from textual.containers import Container, VerticalScroll
-from textual.widgets import Static, Button
-from textual.widget import Widget
+from textual.containers import VerticalScroll
+from textual.widgets import Static
 from textual.binding import Binding
-from textual import work
-from typing import List, Optional
-
-
-class SessionListItem(Widget):
-    """A single session in the list."""
-
-    def __init__(self, session_data: dict, is_selected: bool = False):
-        super().__init__()
-        self.session_data = session_data
-        self.is_selected = is_selected
-
-    def compose(self) -> ComposeResult:
-        classes = "session-item selected" if self.is_selected else "session-item"
-        yield Static(
-            f"{self.session_data['id'][:25]}... | {self.session_data['created']} | {self.session_data['messages']} msgs\n  {self.session_data['last_message']}",
-            classes=classes
-        )
+from typing import List
 
 
 class SessionsScreen(Static):
@@ -30,7 +12,6 @@ class SessionsScreen(Static):
         Binding("n", "new_session", "New Session"),
         Binding("d", "delete_session", "Delete"),
         Binding("r", "refresh", "Refresh"),
-        Binding("enter", "switch_session", "Switch"),
     ]
 
     def __init__(self):
@@ -39,12 +20,9 @@ class SessionsScreen(Static):
         self.selected_index: int = 0
 
     def compose(self) -> ComposeResult:
-        yield Container(
-            Static("📁 Sessions", classes="section-title"),
-            Static("↑↓ Navigate | Enter: Switch | n: New | d: Delete | r: Refresh", classes="hint-bar"),
-            VerticalScroll(id="session-list"),
-            id="sessions-container"
-        )
+        yield Static("📁 Sessions", classes="section-title")
+        yield Static("Arrow keys: Navigate | Enter: Switch | n: New | d: Delete | r: Refresh", classes="hint-bar")
+        yield Static("No sessions found.", id="session-list")
 
     def on_mount(self) -> None:
         self.refresh_sessions()
@@ -70,35 +48,26 @@ class SessionsScreen(Static):
         self.update_session_list()
 
     def update_session_list(self) -> None:
-        list_container = self.query_one("#session-list", VerticalScroll)
-        # Remove all children properly
-        for child in list_container.children:
-            child.remove()
+        list_widget = self.query_one("#session-list", Static)
 
         if not self.sessions:
-            list_container.mount(Static("No sessions found. Press 'n' to create one.", classes="empty-message"))
+            list_widget.update("No sessions found. Press 'n' to create one.")
             return
 
+        lines = []
         for i, session in enumerate(self.sessions):
-            classes = "session-item"
-            if i == self.selected_index:
-                classes += " selected"
-            list_container.mount(
-                Static(
-                    f"[b]{session['id'][:20]}...[/b] | {session['created']} | {session['messages']} msgs\n  Last: {session['last_message'][:60]}",
-                    classes=classes
-                )
-            )
+            marker = ">" if i == self.selected_index else " "
+            lines.append(f"{marker} {session['id'][:25]}... | {session['created']} | {session['messages']} msgs")
+            lines.append(f"   {session['last_message'][:60]}")
+            lines.append("")
+
+        list_widget.update("\n".join(lines))
 
     def action_new_session(self) -> None:
-        """Create a new session and switch to chat."""
-        self.notify("New session created. Switching to chat...")
-        # The actual session creation happens when user starts chatting
         from services.claw_cli import claw_cli
         claw_cli.run_interactive()
 
     def action_delete_session(self) -> None:
-        """Delete selected session."""
         if not self.sessions or self.selected_index >= len(self.sessions):
             return
 
@@ -106,32 +75,20 @@ class SessionsScreen(Static):
         from services.sessions import session_manager
 
         if session_manager.delete_session(session["id"]):
-            self.notify(f"Deleted session: {session['id']}")
             self.refresh_sessions()
-        else:
-            self.notify("Failed to delete session", severity="error")
 
-    def action_switch_session(self) -> None:
-        """Switch to selected session and start chat."""
-        if not self.sessions or self.selected_index >= len(self.sessions):
-            return
-
-        session = self.sessions[self.selected_index]
-        self.notify(f"Switching to session: {session['id'][:20]}...")
-
-        from services.claw_cli import claw_cli
-        claw_cli.run_interactive("--resume", session["path"])
-
-    def handle_key(self, event) -> bool:
+    def on_key(self, event) -> None:
         """Handle navigation keys."""
         if event.key == "up":
             if self.selected_index > 0:
                 self.selected_index -= 1
                 self.update_session_list()
-            return True
         elif event.key == "down":
             if self.selected_index < len(self.sessions) - 1:
                 self.selected_index += 1
                 self.update_session_list()
-            return True
-        return False
+        elif event.key == "enter":
+            if self.sessions:
+                session = self.sessions[self.selected_index]
+                from services.claw_cli import claw_cli
+                claw_cli.run_interactive("--resume", session["path"])

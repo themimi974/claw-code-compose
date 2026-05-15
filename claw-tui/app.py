@@ -3,7 +3,7 @@
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
-from textual.widgets import Static, TabbedContent, Tab
+from textual.widgets import Static, Footer, Button
 from textual.binding import Binding
 
 from screens.dashboard import DashboardScreen
@@ -83,19 +83,22 @@ class ClawTUI(App):
         align: center middle;
     }
 
-    #footer {
-        dock: bottom;
+    #nav-bar {
+        dock: top;
         height: 1;
         background: $primary;
         content-align: center middle;
     }
 
-    TabbedContent Tab {
-        background: $surface;
+    .nav-button {
+        margin: 0 1;
     }
 
-    TabbedContent Tab.active {
+    #footer {
+        dock: bottom;
+        height: 1;
         background: $primary;
+        content-align: center middle;
     }
     """
 
@@ -110,6 +113,8 @@ class ClawTUI(App):
         Binding("6", "switch_tab('chat')", "Chat"),
     ]
 
+    current_tab = "dashboard"
+
     def compose(self) -> ComposeResult:
         # Header
         yield Container(
@@ -118,20 +123,17 @@ class ClawTUI(App):
             id="header"
         )
 
-        # Tabbed content
-        with TabbedContent():
-            with Tab("Dashboard", id="tab-dashboard"):
-                yield DashboardScreen()
-            with Tab("Sessions", id="tab-sessions"):
-                yield SessionsScreen()
-            with Tab("Agents", id="tab-agents"):
-                yield AgentsScreen()
-            with Tab("Permissions", id="tab-permissions"):
-                yield PermissionsScreen()
-            with Tab("Commands", id="tab-commands"):
-                yield CommandsScreen()
-            with Tab("Chat", id="tab-chat"):
-                yield ChatScreen()
+        # Navigation bar with tab names
+        with Horizontal(id="nav-bar"):
+            yield Button("1.Dashboard", id="nav-dashboard", classes="nav-button")
+            yield Button("2.Sessions", id="nav-sessions", classes="nav-button")
+            yield Button("3.Agents", id="nav-agents", classes="nav-button")
+            yield Button("4.Permissions", id="nav-permissions", classes="nav-button")
+            yield Button("5.Commands", id="nav-commands", classes="nav-button")
+            yield Button("6.Chat", id="nav-chat", classes="nav-button")
+
+        # Content area - show based on current tab
+        yield Container(id="content-area")
 
         # Footer
         yield Container(
@@ -139,9 +141,42 @@ class ClawTUI(App):
             id="footer"
         )
 
+    def on_mount(self) -> None:
+        self.show_tab("dashboard")
+
+    def show_tab(self, tab_name: str) -> None:
+        """Show the specified tab."""
+        self.current_tab = tab_name
+        content = self.query_one("#content-area", Container)
+        
+        # Clear content
+        for child in content.children:
+            child.remove()
+        
+        # Show appropriate screen
+        if tab_name == "dashboard":
+            content.mount(DashboardScreen())
+        elif tab_name == "sessions":
+            content.mount(SessionsScreen())
+        elif tab_name == "agents":
+            content.mount(AgentsScreen())
+        elif tab_name == "permissions":
+            content.mount(PermissionsScreen())
+        elif tab_name == "commands":
+            content.mount(CommandsScreen())
+        elif tab_name == "chat":
+            content.mount(ChatScreen())
+
     def action_switch_tab(self, tab_id: str) -> None:
         """Switch to a specific tab."""
-        self.query_one(TabbedContent).active = tab_id.replace("tab-", "")
+        self.show_tab(tab_id.replace("tab-", ""))
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses for navigation."""
+        button_id = event.button.id
+        if button_id:
+            tab_name = button_id.replace("nav-", "")
+            self.show_tab(tab_name)
 
     def action_quit(self) -> None:
         """Quit to raw CLI."""
