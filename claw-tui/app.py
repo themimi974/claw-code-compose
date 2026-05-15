@@ -76,6 +76,22 @@ class ClawTUI(App):
         padding: 0 2;
     }
 
+    .header-title {
+        text-style: bold;
+        color: $text;
+        padding: 0 1;
+    }
+
+    .header-hint {
+        color: $text-muted;
+        padding: 0 1;
+    }
+
+    .footer-hint {
+        color: $text-muted;
+        padding: 0 1;
+    }
+
     #header {
         dock: top;
         height: 3;
@@ -85,13 +101,19 @@ class ClawTUI(App):
 
     #nav-bar {
         dock: top;
-        height: 1;
+        height: auto;
         background: $primary;
         content-align: center middle;
     }
 
     .nav-button {
         margin: 0 1;
+        min-width: 12;
+    }
+
+    .nav-button.active {
+        background: $accent;
+        color: $text;
     }
 
     #footer {
@@ -100,20 +122,27 @@ class ClawTUI(App):
         background: $primary;
         content-align: center middle;
     }
+
+    #content-area {
+        padding: 1;
+    }
     """
 
     BINDINGS = [
         Binding("q", "quit", "Quit to CLI"),
         Binding("ctrl+c", "exit", "Exit"),
-        Binding("1", "switch_tab('dashboard')", "Dashboard"),
-        Binding("2", "switch_tab('sessions')", "Sessions"),
-        Binding("3", "switch_tab('agents')", "Agents"),
-        Binding("4", "switch_tab('permissions')", "Permissions"),
-        Binding("5", "switch_tab('commands')", "Commands"),
-        Binding("6", "switch_tab('chat')", "Chat"),
+        Binding("tab", "next_tab", "Next Tab"),
+        Binding("shift+tab", "prev_tab", "Prev Tab"),
+        Binding("1", "goto_tab('dashboard')", "Dashboard"),
+        Binding("2", "goto_tab('sessions')", "Sessions"),
+        Binding("3", "goto_tab('agents')", "Agents"),
+        Binding("4", "goto_tab('permissions')", "Permissions"),
+        Binding("5", "goto_tab('commands')", "Commands"),
+        Binding("6", "goto_tab('chat')", "Chat"),
     ]
 
     current_tab = "dashboard"
+    tabs = ["dashboard", "sessions", "agents", "permissions", "commands", "chat"]
 
     def compose(self) -> ComposeResult:
         # Header
@@ -143,15 +172,18 @@ class ClawTUI(App):
 
     def on_mount(self) -> None:
         self.show_tab("dashboard")
+        self.update_nav_buttons()
 
     def show_tab(self, tab_name: str) -> None:
         """Show the specified tab."""
         self.current_tab = tab_name
         content = self.query_one("#content-area", Container)
         
-        # Clear content
-        for child in content.children:
-            child.remove()
+        # Clear content properly
+        content.remove_children()
+        
+        # Update nav button styles
+        self.update_nav_buttons()
         
         # Show appropriate screen
         if tab_name == "dashboard":
@@ -167,9 +199,32 @@ class ClawTUI(App):
         elif tab_name == "chat":
             content.mount(ChatScreen())
 
-    def action_switch_tab(self, tab_id: str) -> None:
-        """Switch to a specific tab."""
-        self.show_tab(tab_id.replace("tab-", ""))
+    def update_nav_buttons(self) -> None:
+        """Update navigation button styles to show active tab."""
+        for btn in self.query(".nav-button"):
+            btn_id = btn.id
+            if btn_id:
+                tab_name = btn_id.replace("nav-", "")
+                if tab_name == self.current_tab:
+                    btn.add_class("active")
+                else:
+                    btn.remove_class("active")
+
+    def action_goto_tab(self, tab_name: str) -> None:
+        """Go to a specific tab."""
+        self.show_tab(tab_name)
+
+    def action_next_tab(self) -> None:
+        """Go to the next tab."""
+        current_idx = self.tabs.index(self.current_tab)
+        next_idx = (current_idx + 1) % len(self.tabs)
+        self.show_tab(self.tabs[next_idx])
+
+    def action_prev_tab(self) -> None:
+        """Go to the previous tab."""
+        current_idx = self.tabs.index(self.current_tab)
+        prev_idx = (current_idx - 1) % len(self.tabs)
+        self.show_tab(self.tabs[prev_idx])
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses for navigation."""
@@ -177,6 +232,7 @@ class ClawTUI(App):
         if button_id:
             tab_name = button_id.replace("nav-", "")
             self.show_tab(tab_name)
+            self.update_nav_buttons()
 
     def action_quit(self) -> None:
         """Quit to raw CLI."""
