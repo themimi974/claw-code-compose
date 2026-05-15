@@ -37,9 +37,17 @@ echo -e "${CYAN}Using $COMPOSE in: ${PROJECT_DIR}${NC}\n"
 $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" build
 
 # Run via compose (--rm to remove container after exit)
+# Default: launch TUI. Use --cli flag to run raw CLI instead.
 MODEL_FLAG=""
 if [[ -n "${CLAW_MODEL:-}" ]]; then
    MODEL_FLAG="--model $CLAW_MODEL"
 fi
 
-exec $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" run --rm claw-code claw --permission-mode danger-full-access $MODEL_FLAG "$@"
+# Check if --cli flag is passed
+if [[ "$*" == *"--cli"* ]]; then
+   # Run raw CLI
+   exec $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" run --rm claw-code claw --permission-mode danger-full-access $MODEL_FLAG "$@"
+else
+   # Run TUI (default)
+   exec $COMPOSE -f "$SCRIPT_DIR/docker-compose.yml" run --rm claw-code python3 /opt/claw-tui/main.py "$@"
+fi
