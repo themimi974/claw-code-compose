@@ -12,12 +12,3 @@
 temp/
 old/
 *.log
-
-# OpenCode files (do not commit)
-.opencode/
-.opencode-compose/
-opencode.json
-
-# Documentation
-SPEC.md
-AGENTS.md
